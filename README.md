@@ -81,13 +81,16 @@ Probabilidades_torneo_futbito/
 │   ├── knockout_stage.py   # Cuadro eliminatorio
 │   ├── monte_carlo.py      # Orquestador de N simulaciones
 │   ├── metrics.py          # Agregaciones por equipo, nivel, comparación
-│   └── plots.py            # Gráficos Plotly (sin dependencias de UI)
+│   ├── plots.py            # Gráficos Plotly (sin dependencias de UI)
+│   ├── theory.py           # Modelo analítico cerrado del Teorema 2
+│   └── theory_plots.py     # Gráficos de la sección teórica
 │
 └── tests/
     ├── test_probabilities.py
     ├── test_group_draw.py
     ├── test_group_stage.py
-    └── test_monte_carlo.py
+    ├── test_monte_carlo.py
+    └── test_theory.py
 ```
 
 ## Instalación
@@ -112,6 +115,9 @@ El dashboard permite:
 - Elegir sorteo: balanceado / aleatorio / comparar ambos.
 - Editar manualmente la matriz de probabilidades por niveles.
 - Ver tablas (por equipo y por nivel) y gráficos comparativos.
+- **Sección teórica interactiva**: demostración visual del Teorema 2
+  (sigmoide ajustable, punto de inflexión en P=½, casos donde las curvas se
+  igualan vs. casos donde divergen). Ver sección «Demostración del Teorema 2».
 
 ### Desde consola
 
@@ -142,8 +148,44 @@ pytest -q
 ```
 
 Cubren coherencia de probabilidades, generación correcta de equipos y
-grupos, exactamente 2 clasificados por grupo, ausencia de duplicados y
-**reproducibilidad bajo misma semilla**.
+grupos, exactamente 2 clasificados por grupo, ausencia de duplicados,
+**reproducibilidad bajo misma semilla** y, en `test_theory.py`, las cinco
+propiedades del Teorema 2 (equivalencia con fuerzas iguales, equivalencia
+con k=0, promedio teórico ½, signo de la diferencia para fuertes/débiles
+y existencia de al menos un cruce).
+
+## Demostración del Teorema 2 (sección teórica del dashboard)
+
+El documento adjunto demuestra que, bajo cualquier mecanismo de sorteo en el
+que clasifiquen exactamente *r* equipos de *m*, se cumple que
+$\frac{1}{n} \sum_i P_i = r/m$. Y, además (Teorema 2), las dos curvas
+$i \mapsto P^{ale}_i$  y  $i \mapsto P^{bal}_i$ coinciden punto a punto **si y
+solo si todas las fuerzas son iguales**.
+
+El módulo `src/theory.py` modela esto analíticamente con la sigmoide
+
+$$P_i = \sigma\bigl(k\,(s_i - \mu_{rival,i})\bigr),\qquad \sigma(x) = \frac{1}{1+e^{-kx}}.$$
+
+La segunda derivada $\sigma''(x) = k^2\,\sigma(1-\sigma)(1-2\sigma)$ cambia
+de signo exactamente cuando $\sigma = \tfrac{1}{2}$: ese es el **punto de
+inflexión**. Por la desigualdad de Jensen, ese cambio de curvatura es la
+razón por la que un sorteo con varianza en la dificultad (aleatorio) y otro
+sin varianza (balanceado) no pueden producir la misma curva, **salvo en dos
+casos degenerados**: cuando las fuerzas son iguales (spread = 0) o cuando la
+pendiente $k = 0$ (la curva colapsa a una recta horizontal en $\tfrac{1}{2}$
+y el modelo se vuelve trivial).
+
+El dashboard incluye sliders para `spread` y `k` que permiten transitar
+entre estos casos visualmente.
+
+### Limitaciones del modelo teórico
+
+El módulo `theory.py` agrega la fuerza rival ANTES de la sigmoide
+($\sigma(s_i - \overline{s}_{rival})$). La simulación Monte Carlo real
+aplica la sigmoide partido a partido, lo que activa Jensen al máximo. Por
+tanto, el modelo cerrado **subestima la magnitud** (pero no el signo) de
+las diferencias entre sorteos. Es correcto como demostración cualitativa
+del Teorema 2.
 
 ## Cómo interpretar los resultados
 
